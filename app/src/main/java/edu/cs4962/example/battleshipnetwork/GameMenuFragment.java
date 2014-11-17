@@ -19,12 +19,14 @@ import java.util.UUID;
 
 public class GameMenuFragment extends Fragment implements ListAdapter {
 
+    final String NEW_LINE = "\r\n";
     // TODO: Delete Game should indicate a number
     LinearLayout _rootLayout;
     ListView _gameListView;
     UUID[] _games = null;
+    OnMenuItemSelectedListener _onMenuItemSelectedListener = null;
+    OnNewGameSelectedListener _onNewGameSelectedListener = null;
     private int _gameListPosition = 0;
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -50,8 +52,8 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
 
         // gameOptionsList
         String[] gameOptionsList = new String[]{
-                "New Game",
-                "Delete Current Game"
+                "New Game"
+                //"Delete Current Game"
         };
 
         ArrayAdapter<String> gameMenuOptionsAdapter = new ArrayAdapter<String>(
@@ -67,15 +69,14 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
         gameOptionsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                switch(position) {
+                switch (position) {
                     case 0: // new game
-                        BattleshipGameModel newGame = new BattleshipGameModel();
-                        BattleshipGameCollection.getInstance().addGame(newGame);
-                        break;
-                    case 1: // TODO: properly delete game
-                        if(_games.length > 0) {
-                            BattleshipGameCollection.getInstance().removeGame(_games[_gameListPosition]);
+                        if (_onNewGameSelectedListener != null) {
+                            _onNewGameSelectedListener.OnNewGameSelected();
                         }
+                        break;
+                    case 1:
+                        // TODO: JOIN GAME??
                         break;
                 }
             }
@@ -121,8 +122,6 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
         return true;
     }
 
-    final String NEW_LINE = "\r\n";
-    final String DIVIDER = "GAME #";
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
         UUID gameIdentifier = _games[(int) getItemId(position)];
@@ -130,27 +129,35 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
 
         TextView gameTitleView = new TextView(getActivity());
         gameTitleView.setTextSize(16.0f);
-        // TODO: create accessors to get more info from BattleshipGameModel
+
         StringBuilder sb = new StringBuilder();
-        sb.append(DIVIDER + (++position));
-        sb.append(NEW_LINE);
+        sb.append(String.format("Game Name: %s", game.getName()));
+        sb.append(String.format("Status: %s", game.getGameState()));
 
-        if(game.getGameState() == GamePlayState.GAME_OVER) {
-            sb.append("Status: GAME OVER");
-        } else {
-            sb.append(String.format("Status: %s turn", game.getPlayerTurn()));
-        }
-
-        sb.append(NEW_LINE);
-        sb.append(String.format("P1 missiles fired: %1$d, hit: %2$d", game.player1_missilesFired(), game.player1_totalHits()));
-        sb.append(NEW_LINE);
-        sb.append(String.format("P2 missiles fired: %1$d, hit: %2$d", game.player2_missilesFired(), game.player2_totalHits()));
-
-        gameTitleView.setText(sb.toString());
         gameTitleView.setHeight(200);
         gameTitleView.setMinimumHeight(200);
-        if(game == BattleshipGameCollection.getInstance().getCurrentGame()) {
-            gameTitleView.setBackgroundColor(Color.rgb(255,250,240));
+
+
+        if (gameIdentifier == BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier()) {
+            sb.append(NEW_LINE);
+
+            if (game.getGameState() == ServicesClass.GameStatus.DONE) {
+                sb.append(String.format("Winner: %s", game.getWinner()));
+            } else {
+                sb.append(String.format("Status: %s turn", game.getPlayerTurn()));
+            }
+
+            sb.append(NEW_LINE);
+            sb.append(String.format("Missiles fired: %1$d, hit: %2$d", game.getMissilesLaunched()));
+
+            gameTitleView.setHeight(230);
+            gameTitleView.setMinimumHeight(230);
+        }
+
+        gameTitleView.setText(sb.toString());
+
+        if (game == BattleshipGameCollection.getInstance().getCurrentGame()) {
+            gameTitleView.setBackgroundColor(Color.rgb(255, 250, 240));
         }
         return gameTitleView;
     }
@@ -184,6 +191,8 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
     public void registerDataSetObserver(DataSetObserver dataSetObserver) {
     }
 
+    //region OnMenuItemSelectedListener
+
     @Override
     public void unregisterDataSetObserver(DataSetObserver dataSetObserver) {
     }
@@ -192,20 +201,28 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
         _gameListView.invalidateViews();
     }
 
-    //region OnMenuItemSelectedListener
-
-    OnMenuItemSelectedListener _onMenuItemSelectedListener = null;
-
-    public interface OnMenuItemSelectedListener {
-        public void OnMenuItemSelected(GameMenuFragment gameMenuFragment, UUID identifier);
-    }
-
     public OnMenuItemSelectedListener getOnMenuItemSelectedListener() {
         return _onMenuItemSelectedListener;
     }
 
     public void setOnMenuItemSelectedListener(OnMenuItemSelectedListener _onMenuItemSelectedListener) {
         this._onMenuItemSelectedListener = _onMenuItemSelectedListener;
+    }
+
+    public OnNewGameSelectedListener getOnNewGameSelectedListener() {
+        return _onNewGameSelectedListener;
+    }
+
+    public void setOnNewGameSelectedListener(OnNewGameSelectedListener _onNewGameSelectedListener) {
+        this._onNewGameSelectedListener = _onNewGameSelectedListener;
+    }
+
+    public interface OnMenuItemSelectedListener {
+        public void OnMenuItemSelected(GameMenuFragment gameMenuFragment, UUID identifier);
+    }
+
+    public interface OnNewGameSelectedListener {
+        public void OnNewGameSelected();
     }
     //endregion
 }

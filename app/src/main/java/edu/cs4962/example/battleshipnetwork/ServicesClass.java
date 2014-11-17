@@ -1,7 +1,6 @@
 package edu.cs4962.example.battleshipnetwork;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Created by Brigham on 11/16/2014.
@@ -22,11 +21,11 @@ public class ServicesClass {
     //region POJO
 
     public static class NetworkGame {
-        public final UUID id;
+        public final String id;
         public final String name;
         public final GameStatus status;
 
-        public NetworkGame(UUID id, String name, GameStatus status) {
+        public NetworkGame(String id, String name, GameStatus status) {
             this.id = id;
             this.name = name;
             this.status = status;
@@ -34,7 +33,7 @@ public class ServicesClass {
     }
 
     public static class NetworkGameDetail {
-        public final UUID id;
+        public final String id;
         public final String name;
         public final String player1;
         public final String player2;
@@ -42,7 +41,7 @@ public class ServicesClass {
         public final int missilesLaunched;
         public final GameStatus status;
 
-        public NetworkGameDetail(UUID id, String name, GameStatus status, String player1, String player2, String winner, int missilesLaunched) {
+        public NetworkGameDetail(String id, String name, GameStatus status, String player1, String player2, String winner, int missilesLaunched) {
             this.id = id;
             this.name = name;
             this.status = status;
@@ -53,18 +52,18 @@ public class ServicesClass {
         }
     }
     public static class JoinGameResponse {
-        public final UUID playerId;
+        public final String playerId;
 
-        public JoinGameResponse(UUID playerId ) {
+        public JoinGameResponse(String playerId) {
             this.playerId = playerId;
         }
     }
 
     public static class NewGameResponse {
-        public final UUID playerId;
-        public final UUID gameId;
+        public final String playerId;
+        public final String gameId;
 
-        public NewGameResponse(UUID playerId, UUID gameId) {
+        public NewGameResponse(String playerId, String gameId) {
             this.playerId = playerId;
             this.gameId = gameId;
         }
@@ -90,11 +89,11 @@ public class ServicesClass {
     }
 
     public static class Guess {
-        public final UUID playerId;
+        public final String playerId;
         public final int xPos;
         public final int yPos;
 
-        public Guess(UUID playerId, int xPos, int yPos) {
+        public Guess(String playerId, int xPos, int yPos) {
             this.playerId = playerId;
             this.xPos = xPos;
             this.yPos = yPos;

@@ -23,15 +23,15 @@ import retrofit.http.GET;
 import retrofit.http.POST;
 import retrofit.http.Path;
 
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.CurrentTurnResponse;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.Guess;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.GuessResponse;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.JoinGameResponse;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NetworkGame;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NetworkGameDetail;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.JoinGameResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerBoardResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.CurrentTurnResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.GuessResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.NewGameResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.Guess;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NewGame;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.NewGameResponse;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerBoardResponse;
 
 /**
  * Created by Brigham on 10/29/2014.
@@ -40,27 +40,8 @@ public class GameActivity extends Activity {
 
     private static final String API_URL = "http://battleship.pixio.com";
     private final String TAG = "GAMEACTIVITY";
-
-    interface BattleshipService {
-        @GET("/api/games/")
-        void gamesList(Callback<List<NetworkGame>> gamesListCallback);
-        @GET("/api/games/{id}")
-        void gameDetail(@Path("id") String id, Callback<NetworkGameDetail> gameDetailCallback);
-        @POST("/api/games/{id}/join")
-        void joinGame(@Path("id") String id, @Body String playerName, Callback<JoinGameResponse> gameResponseCallback);
-        @POST("/api/games")
-        void createNewGame(@Body NewGame newGame, Callback<NewGameResponse> newGameResponseCallback);
-        @POST("/api/games/{id}/guess")
-        void guess(@Path("id") String playerId, @Body Guess guess, Callback<GuessResponse> guessResponseCallback);
-        @POST("/api/games/{id}/status")
-        void determineTurn(@Path("id") String playerId, Callback<CurrentTurnResponse> currentTurnResponseCallback);
-        @POST("/api/games/{id}/board")
-        void requestBoard(@Path("id") String playerId, Callback<PlayerBoardResponse> playerBoardResponseCallback);
-    }
-
     private RestAdapter restAdapter;
     private BattleshipService battleshipService;
-
     private GamePlayFragment _gamePlayFragment;
     private GameMenuFragment _gameMenuFragment;
 
@@ -108,6 +89,24 @@ public class GameActivity extends Activity {
         addTransaction.commit();
 
         //region CONTROLLER
+        _gameMenuFragment.setOnNewGameSelectedListener(new GameMenuFragment.OnNewGameSelectedListener() {
+            @Override
+            public void OnNewGameSelected() {
+                NewGame newGame = new NewGame("TheCakeIsALie", "Dave");
+                battleshipService.createNewGame(newGame, new Callback<NewGameResponse>() {
+                    @Override
+                    public void success(NewGameResponse newGameResponse, Response response) {
+                        // TODO: HANDLE GAME WAITING
+                    }
+
+                    @Override
+                    public void failure(RetrofitError retrofitError) {
+
+                    }
+                });
+            }
+        });
+
         _gameMenuFragment.setOnMenuItemSelectedListener(new GameMenuFragment.OnMenuItemSelectedListener() {
             @Override
             public void OnMenuItemSelected(GameMenuFragment gameMenuFragment, UUID identifier) {
@@ -124,6 +123,7 @@ public class GameActivity extends Activity {
                     @Override
                     public void success(JoinGameResponse joinGameResponse, Response response) {
                         BattleshipGameCollection.getInstance().getCurrentGame().setPlayerId(joinGameResponse.playerId);
+
                         battleshipService.determineTurn(joinGameResponse.playerId.toString(), new Callback<CurrentTurnResponse>() {
                             @Override
                             public void success(CurrentTurnResponse currentTurnResponse, Response response) {
@@ -158,7 +158,8 @@ public class GameActivity extends Activity {
                 battleshipService.gameDetail(BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier().toString(), new Callback<NetworkGameDetail>() {
                     @Override
                     public void success(NetworkGameDetail networkGameDetail, Response response) {
-                        BattleshipGameCollection.getInstance().getCurrentGame().addGameDetail(joinGameResponse.playerId);
+                        BattleshipGameCollection.getInstance().getCurrentGame().setGameDetail(networkGameDetail);
+
                     }
 
                     @Override
@@ -167,12 +168,6 @@ public class GameActivity extends Activity {
                     }
                 });
 
-
-
-
-
-
-
                 //Toast.makeText(getApplicationContext(), "Current game changed!", Toast.LENGTH_SHORT).show();
             }
         });
@@ -180,6 +175,9 @@ public class GameActivity extends Activity {
         _gamePlayFragment.setOnMissleFiredListener(new GamePlayFragment.OnMissileFiredListener() {
             @Override
             public void OnMissileFired(int position) {
+                battleshipService.guess(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId.toString(),
+
+                        );
                 Player turn = BattleshipGameCollection.getInstance().getCurrentGame().getPlayerTurn();
                 boolean success = BattleshipGameCollection.getInstance().getCurrentGame().missileFired(position);
                 //TODO: Move string to string.xml
@@ -199,24 +197,38 @@ public class GameActivity extends Activity {
         });
     }
 
+    private void refreshGamesList() {
+        battleshipService.gamesList(new Callback<List<NetworkGame>>() {
+            @Override
+            public void success(List<NetworkGame> networkGames, Response response) {
+
+            }
+
+            @Override
+            public void failure(RetrofitError retrofitError) {
+
+            }
+        });
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         BattleshipGameCollection.getInstance().clearGames();
         Log.i(TAG, "onResume()");
 
-        restAdapter =  new RestAdapter.Builder()
+        restAdapter = new RestAdapter.Builder()
                 .setEndpoint(API_URL)
                 .build();
 
-        if(battleshipService == null) {
+        if (battleshipService == null) {
             battleshipService = restAdapter.create(BattleshipService.class);
         }
 
         battleshipService.gamesList(new Callback<List<NetworkGame>>() {
             @Override
             public void success(List<NetworkGame> networkGames, Response response) {
-                    BattleshipGameCollection.getInstance().addNetworkGames(networkGames);
+                BattleshipGameCollection.getInstance().addNetworkGames(networkGames);
             }
 
             @Override
@@ -236,5 +248,28 @@ public class GameActivity extends Activity {
         } catch (Exception e) {
             Log.e("exception", e.getMessage());
         }
+    }
+
+    interface BattleshipService {
+        @GET("/api/games/")
+        void gamesList(Callback<List<NetworkGame>> gamesListCallback);
+
+        @GET("/api/games/{id}")
+        void gameDetail(@Path("id") String id, Callback<NetworkGameDetail> gameDetailCallback);
+
+        @POST("/api/games/{id}/join")
+        void joinGame(@Path("id") String id, @Body String playerName, Callback<JoinGameResponse> gameResponseCallback);
+
+        @POST("/api/games")
+        void createNewGame(@Body NewGame newGame, Callback<NewGameResponse> newGameResponseCallback);
+
+        @POST("/api/games/{id}/guess")
+        void guess(@Path("id") String playerId, @Body Guess guess, Callback<GuessResponse> guessResponseCallback);
+
+        @POST("/api/games/{id}/status")
+        void determineTurn(@Path("id") String playerId, Callback<CurrentTurnResponse> currentTurnResponseCallback);
+
+        @POST("/api/games/{id}/board")
+        void requestBoard(@Path("id") String playerId, Callback<PlayerBoardResponse> playerBoardResponseCallback);
     }
 }

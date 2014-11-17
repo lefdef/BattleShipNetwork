@@ -2,57 +2,31 @@ package edu.cs4962.example.battleshipnetwork;
 
 import android.util.Log;
 
-import com.google.gson.annotations.SerializedName;
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.Cell;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.CurrentTurnResponse;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.GameStatus;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NetworkGameDetail;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerBoardResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.CurrentTurnResponse;
-import static edu.cs4962.example.battleshipnetwork.ServicesClass.Cell;
 
 /**
  * Created by Brigham on 10/27/2014.
  */
-enum GamePlayState {
-    @SerializedName("0")
-    IN_PROGRESS,
-    @SerializedName("1")
-    GAME_OVER
-}
-
-enum CellState {
-    @SerializedName("0")
-    NO_SHIP,
-    @SerializedName("1")
-    SHIP_MISSED,
-    @SerializedName("2")
-    SHIP,
-    @SerializedName("3")
-    SHIP_HIT
-}
-
-enum Player {
-    @SerializedName("0")
-    Player1,
-    @SerializedName("1")
-    Player2,
-    @SerializedName("2")
-    HAL
-}
 
 public class BattleshipGameModel {
     private static final String TAG = "BATTLESHIPGAMEMODEL";
     /*  TODO: Getter for number of boats pieces missileFired and total number of boat pieces left. For both players. Probably an array with stats
         TODO: Getter for status (string). Should indicate the following "Player X turn or Game Over
      */
-
+    public OnBoardChangeListener _onBoardChangedListener;
     private ArrayList<int[]> _boards;
     private boolean _isMyTurn;
-    private UUID _identifier;
+    private String _gameId;
+    private String _playerId;
     private String _gameName;
     private int[] _totalHits;
     private int[] _missilesFired;
@@ -64,52 +38,68 @@ public class BattleshipGameModel {
     private List<Cell> _opponentBoard;
     private String _myName;
     private String _opponentName;
+    private GameStatus _state;
+    private int[] gameReadiness = new int[5];
 
-    private GamePlayState _state;
-    private Player _players[];
+    public BattleshipGameModel(String gameId) {
+        setGameId(gameId);
+        //LoadDefaultValues();
+    }
 
     //region Getters & Setters
-    public GamePlayState getGameState() {
+    public String getWinner() {
+        return _winner;
+    }
+
+    public GameStatus getGameState() {
         return _state;
     }
-    public Player getPlayerTurn() {
-        return _players[_currentTurn];
+
+    public int getMissilesLaunched() {
+        return _missilesLaunched;
     }
-    public UUID getIdentifier() {
-        return _identifier;
+
+    public String getPlayerTurn() {
+        return _isMyTurn ? _myName : _opponentName;
     }
-    public void setIdentifier(UUID identifier) {
-        _identifier = identifier;
+
+    public String getIdentifier() {
+        return _gameId;
     }
+
+    public void setGameId(String identifier) {
+        gameReadiness = new int[5];
+        gameReadiness[4] = 1;
+        _gameId = identifier;
+    }
+
     public String getName() {
         return _gameName;
     }
+
     public int player1_totalHits() {
         return _totalHits[0];
     }
+
     public int player1_missilesFired() {
         return _missilesFired[0];
     }
+
     public int player2_totalHits() {
         return _totalHits[1];
     }
-    public int player2_missilesFired() { return _missilesFired[1]; }
+
+    public int player2_missilesFired() {
+        return _missilesFired[1];
+    }
+    //endregion
+
     public int[] getBoard() {
         return _boards.get(_currentTurn);
     }
+
     public int[] getBoard(int boardNum) {
         return _boards.get(boardNum);
-    }
-    private GamePlayState UpdateGameStatus() {
-        return GamePlayState.IN_PROGRESS;
-    }
-    private int[] gameReadiness = new int[5];
-    //endregion
-
-    public BattleshipGameModel(UUID identifier) {
-        this._identifier = identifier;
-        gameReadiness[4] = 1;
-        //LoadDefaultValues();
     }
 
     private void LoadDefaultValues() {
@@ -134,20 +124,23 @@ public class BattleshipGameModel {
     private void buildGame() {
     }
 
-    public void setPlayerId(UUID playerId) {
+    public void setPlayerId(String playerId) {
+        _playerId = playerId;
         gameReadiness[0] = 1;
     }
+
     public void setCurrentTurn(CurrentTurnResponse currentTurn) {
         _isMyTurn = currentTurn.isYourTurn;
         if(currentTurn.winner == "IN PROGRESS") {
-            _state = GamePlayState.IN_PROGRESS;
+            _state = GameStatus.PLAYING;
         } else {
             _winner = currentTurn.winner;
-            _state = GamePlayState.GAME_OVER;
+            _state = GameStatus.DONE;
         }
 
         gameReadiness[1] = 1;
     }
+
     public void setBoards(PlayerBoardResponse boards) {
         _myBoard = new ArrayList<Cell>(boards.playerBoard);
         _opponentBoard = new ArrayList<Cell>(boards.opponentBoard);
@@ -155,8 +148,8 @@ public class BattleshipGameModel {
     }
 
     public void setGameDetail(NetworkGameDetail gameDetail) {
-        if(gameDetail.id != _identifier) {
-            Log.e(TAG, "Game ids do not match! currentGameId=" + _identifier.toString() + ", gameDetailId=" + gameDetail.id.toString());
+        if (gameDetail.id.equals(_gameId)) {
+            Log.e(TAG, "Game ids do not match! currentGameId=" + _gameId.toString() + ", gameDetailId=" + gameDetail.id.toString());
             return;
         }
 
@@ -165,11 +158,11 @@ public class BattleshipGameModel {
         _opponentName = gameDetail.player2;
         _missilesLaunched = gameDetail.missilesLaunched;
 
-        if(gameDetail.winner == "IN PROGRESS") {
-            _state = GamePlayState.IN_PROGRESS;
+        if (gameDetail.winner.equals("IN PROGRESS")) {
+            _state = GameStatus.PLAYING;
         } else {
             _winner = gameDetail.winner;
-            _state = GamePlayState.GAME_OVER;
+            _state = GameStatus.DONE;
         }
 
         gameReadiness[3] = 1;
@@ -177,11 +170,14 @@ public class BattleshipGameModel {
 
     private boolean isGameReady() {
         boolean ready = true;
-        for(int i = 0; i < gameReadiness.length; i++) {
-            if(gameReadiness[i] != 1) {
+        for (int i = 0; i < gameReadiness.length; i++) {
+            if (gameReadiness[i] != 1) {
                 ready = false;
                 break;
             }
+        }
+        if (ready && _onBoardChangedListener != null) {
+            _onBoardChangedListener.OnBoardChanged();
         }
         return ready;
     }
@@ -215,6 +211,8 @@ public class BattleshipGameModel {
         _boards.get(_currentTurn)[position] = 1; // ship missed
     }
 
+    //region OnBoardChangedListener
+
     public boolean missileFired(int position) {
         Log.i("PLAYER TURN / MISSILE LOC", "firedMissileAt=" + _currentTurn + ",position=" + position);
         // make sure player isn't firing in the same location twice
@@ -235,12 +233,6 @@ public class BattleshipGameModel {
         return success;
     }
 
-    //region OnBoardChangedListener
-
-    public interface OnBoardChangeListener {
-        public void OnBoardChanged();
-    }
-
     public OnBoardChangeListener getOnBoardChangeListener() {
         return _onBoardChangedListener;
     }
@@ -249,13 +241,15 @@ public class BattleshipGameModel {
         this._onBoardChangedListener = _onBoardChangeListener;
     }
 
-    public OnBoardChangeListener _onBoardChangedListener;
-    //endregion
-
     private void triggerObservers() {
-        if(_onBoardChangedListener != null) {
+        if (_onBoardChangedListener != null) {
             _onBoardChangedListener.OnBoardChanged();
         }
+    }
+    //endregion
+
+    public interface OnBoardChangeListener {
+        public void OnBoardChanged();
     }
 
     public static class Game {
