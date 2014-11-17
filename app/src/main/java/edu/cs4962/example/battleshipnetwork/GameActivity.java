@@ -175,7 +175,7 @@ public class GameActivity extends Activity {
         _gamePlayFragment.setOnMissleFiredListener(new GamePlayFragment.OnMissileFiredListener() {
             @Override
             public void OnMissileFired(int position) {
-                battleshipService.guess(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId.toString(),
+                battleshipService.guess(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId(),
 
                         );
                 Player turn = BattleshipGameCollection.getInstance().getCurrentGame().getPlayerTurn();

@@ -124,6 +124,10 @@ public class BattleshipGameModel {
     private void buildGame() {
     }
 
+    public String getPlayerId() {
+        return _playerId;
+    }
+
     public void setPlayerId(String playerId) {
         _playerId = playerId;
         gameReadiness[0] = 1;
