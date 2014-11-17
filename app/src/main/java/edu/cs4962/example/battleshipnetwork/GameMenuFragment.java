@@ -23,7 +23,7 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
     // TODO: Delete Game should indicate a number
     LinearLayout _rootLayout;
     ListView _gameListView;
-    UUID[] _games = null;
+    String[] _gameIds = null;
     OnMenuItemSelectedListener _onMenuItemSelectedListener = null;
     OnNewGameSelectedListener _onNewGameSelectedListener = null;
     private int _gameListPosition = 0;
@@ -41,7 +41,7 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
         _gameListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                UUID gameIdentifier = _games[position];
+                String gameIdentifier = _gameIds[position];
                 _gameListPosition = position;
 
                 if (_onMenuItemSelectedListener != null) {
@@ -101,15 +101,15 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
     public int getCount() {
         // TODO: consider ordering the list by games in progress or game over
         Set<UUID> gameIdentifiers = BattleshipGameCollection.getInstance().getIdentifiers();
-        if (_games == null || _games.length != gameIdentifiers.size()) {
-            _games = gameIdentifiers.toArray(new UUID[gameIdentifiers.size()]);
+        if (_gameIds == null || _gameIds.length != gameIdentifiers.size()) {
+            _gameIds = gameIdentifiers.toArray(new String[gameIdentifiers.size()]);
         }
         return BattleshipGameCollection.getInstance().getIdentifiers().size();
     }
 
     @Override
     public Object getItem(int i) {
-        return _games[i];
+        return _gameIds[i];
     }
 
     @Override
@@ -124,8 +124,8 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
-        UUID gameIdentifier = _games[(int) getItemId(position)];
-        BattleshipGameModel game = BattleshipGameCollection.getInstance().getGame(gameIdentifier);
+        String gameId = _gameIds[(int) getItemId(position)];
+        BattleshipGameModel game = BattleshipGameCollection.getInstance().getGame(gameId);
 
         TextView gameTitleView = new TextView(getActivity());
         gameTitleView.setTextSize(16.0f);
@@ -138,13 +138,13 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
         gameTitleView.setMinimumHeight(200);
 
 
-        if (gameIdentifier == BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier()) {
+        if (gameId == BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier()) {
             sb.append(NEW_LINE);
 
             if (game.getGameState() == ServicesClass.GameStatus.DONE) {
                 sb.append(String.format("Winner: %s", game.getWinner()));
             } else {
-                sb.append(String.format("Status: %s turn", game.getPlayerTurn()));
+                sb.append(String.format("Status: %s turn", game.isMyTurn()));
             }
 
             sb.append(NEW_LINE);
@@ -218,7 +218,7 @@ public class GameMenuFragment extends Fragment implements ListAdapter {
     }
 
     public interface OnMenuItemSelectedListener {
-        public void OnMenuItemSelected(GameMenuFragment gameMenuFragment, UUID identifier);
+        public void OnMenuItemSelected(GameMenuFragment gameMenuFragment, String gameId);
     }
 
     public interface OnNewGameSelectedListener {

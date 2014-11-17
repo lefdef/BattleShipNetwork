@@ -4,6 +4,9 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import java.util.List;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.Cell;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.CellStatus;
 
 /**
  * Created by Brigham on 11/1/2014.
@@ -46,22 +49,25 @@ public class BoardImageAdapter extends BaseAdapter {
     //region INITIALIZE_GAME_BOARD
     public void populateBoard() {
         if(BattleshipGameCollection.getInstance().getCurrentGame() == null) { return; }
+        List<Cell> board = BattleshipGameCollection.getInstance().getCurrentGame().getBoard(_boardId);
 
-        int[] board = BattleshipGameCollection.getInstance().getCurrentGame().getBoard(_boardId);
-
-
-        for (int i = 0; i < board.length; i++) {
-            setCell(i, board[i]);
+        for(Cell c : board) {
+            setCell(c);
         }
     }
 
-    public void setCell(int position, int state) {
-        switch (state) {
-            case 1: // miss
+    public void setCell(Cell cell) {
+        int position = cell.xPos * 10 + cell.yPos;
+
+        switch (cell.status) {
+            case MISS: // miss
                 _tileIds[position] = R.drawable.miss;
                 break;
-            case 3: // missileFired
+            case HIT: // missileFired
                 _tileIds[position] = R.drawable.explosion;
+                break;
+            case SHIP:
+                _tileIds[position] = R.drawable.ship;
                 break;
             default:
                 _tileIds[position] = R.drawable.water_g1_t1;

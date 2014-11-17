@@ -12,6 +12,7 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.GameStatus;
 
 /**
  * Created by Brigham on 10/29/2014.
@@ -45,8 +46,8 @@ public class GamePlayFragment extends Fragment {
             }
         });
         // update the adapter
-        _player1_label.setText("Player 1's board");
-        _player2_label.setText("Player 2's board");
+        _player1_label.setText("Player 1 board");
+        _player2_label.setText("Opponent board");
 
         // re-initialize the board with any new data
         _player1_adapter.populateBoard();
@@ -59,42 +60,17 @@ public class GamePlayFragment extends Fragment {
         _player2_adapter.notifyDataSetChanged();
         _player2_grid.invalidateViews();
 
-        if (BattleshipGameCollection.getInstance().getCurrentGame().getPlayerTurn() == Player.Player1) {
-
+        if (BattleshipGameCollection.getInstance().getCurrentGame().isMyTurn()) {
             _player1_grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    Toast.makeText(getActivity(), "You're Doing It Wrong. Launch missiles at player 2 board!", Toast.LENGTH_SHORT).show();
-                }
-            });
-            _player2_grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                    if (_onMissileFiredListener != null) {
-                        _onMissileFiredListener.OnMissileFired(position);
-                    }
-                }
-            });
-        } else {
-            _player2_grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    Toast.makeText(getActivity(), "You're Doing It Wrong. Launch missiles at player 1 board!", Toast.LENGTH_SHORT).show();
-                }
-            });
-            _player1_grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                    if (_onMissileFiredListener != null) {
-                        _onMissileFiredListener.OnMissileFired(position);
-                    }
+                    Toast.makeText(getActivity(), "You're Doing It Wrong. Launch missiles at opponent board!", Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        if(BattleshipGameCollection.getInstance().getCurrentGame().getGameState() == GamePlayState.GAME_OVER) {
-            String loser = BattleshipGameCollection.getInstance().getCurrentGame().getPlayerTurn() == Player.Player1 ? "player 2" : "player 1";
-            Toast.makeText(getActivity(), "Winner! You sunk " + loser + " battleship.", Toast.LENGTH_SHORT).show();
+        if(BattleshipGameCollection.getInstance().getCurrentGame().getGameState() == GameStatus.DONE) {
+            Toast.makeText(getActivity(), String.format("%s wins!", BattleshipGameCollection.getInstance().getCurrentGame().getWinner()), Toast.LENGTH_SHORT).show();
             disableItemClickListeners();
             return;
         }

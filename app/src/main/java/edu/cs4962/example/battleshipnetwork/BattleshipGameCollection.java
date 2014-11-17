@@ -4,10 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Observable;
 import java.util.Set;
 import java.util.UUID;
-
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.GameStatus;
 /**
  * Created by Brigham on 11/16/2014.
  */
@@ -21,6 +20,11 @@ public class BattleshipGameCollection {
 
     public static BattleshipGameCollection getInstance() { return BattleshipGameCollectionHolder.INSTANCE; }
     public BattleshipGameModel getCurrentGame() { return _currentGame; }
+    public void setCurrentGame(BattleshipGameModel newGame) {
+        _currentGame = newGame;
+        _currentGame.setGameStatus(GameStatus.WAITING);
+        if(_onGameSetChangedListener != null) { _onGameSetChangedListener.onGameSetChanged(); }
+    }
     public boolean IsCurrentGame(UUID game_identifier) { return _games.get(game_identifier) == _currentGame; }
     public Map<UUID, BattleshipGameModel> getGameMap() { return _games; }
     public List<BattleshipGameModel> getGameList() {
@@ -33,20 +37,21 @@ public class BattleshipGameCollection {
     public Set<UUID> getIdentifiers() {
         return _games.keySet();
     }
-    public BattleshipGameModel getGame(UUID identifier) {
-        return _games.get(identifier);
+    public BattleshipGameModel getGame(String gameId) {
+        return _games.get(UUID.fromString(gameId));
     }
 
-    public void pendingCurrentGameSet(UUID game_identifier) {
+    public void joinGame(UUID game_identifier) {
         _currentGame = _games.get(game_identifier);
-        _currentGame.buildGame();
+        _currentGame.setGameStatus(GameStatus.WAITING);
         if(_onGameSetChangedListener != null) { _onGameSetChangedListener.onGameSetChanged(); }
     }
 
     public void addBattleshipGameModels(List<ServicesClass.NetworkGame> games) {
+        _games.clear();
         for(int idx = games.size() - 1; idx >= 0; idx--){
             // reverse order
-            //_games.put(games.get(idx).id, games.get(idx));
+            _games.put(UUID.fromString(games.get(idx).id), new BattleshipGameModel(games.get(idx)));
         }
 
         if(_onGameSetChangedListener != null) { _onGameSetChangedListener.onGameSetChanged(); }
