@@ -22,7 +22,6 @@ import static edu.cs4962.example.battleshipnetwork.ServicesClass.NetworkGame;
 
 public class BattleshipGameModel {
     private static final String TAG = "BATTLESHIPGAMEMODEL";
-    public OnBoardChangeListener _onBoardChangedListener;
     private boolean _isMyTurn;
     private String _gameId;
     private String _playerId;
@@ -47,7 +46,6 @@ public class BattleshipGameModel {
         _state = game.status;
     }
 
-    //region Getters & Setters
     public String getWinner() {
         return _winner;
     }
@@ -101,7 +99,7 @@ public class BattleshipGameModel {
         return _myName;
     }
 
-    public String getIdentifier() {
+    public String getGameId() {
         return _gameId;
     }
 
@@ -118,12 +116,6 @@ public class BattleshipGameModel {
     public String getName() {
         return _gameName;
     }
-    //endregion
-//
-//    public int[] getCurrentPlayerBoard() {
-//        return _boards.get(_isMyTurn ? 0 : 1);
-//    }
-//
     public List<Cell> getBoard(int boardNum) {
         return boardNum == 0 ? _myBoard : _opponentBoard;
     }
@@ -137,9 +129,15 @@ public class BattleshipGameModel {
         gameReadiness[0] = 1;
     }
 
+    int _lastTurn = -1;
+
     public void setCurrentTurn(CurrentTurnResponse currentTurn) {
+        int currentTurnInt = currentTurn.isYourTurn ? 1 : 0;
+        boolean turnChanged = _lastTurn != currentTurnInt;
+        _lastTurn = currentTurnInt;
+
         _isMyTurn = currentTurn.isYourTurn;
-        if(currentTurn.winner == "IN PROGRESS") {
+        if(currentTurn.winner.equals("IN PROGRESS")) {
             _state = GameStatus.PLAYING;
         } else {
             _winner = currentTurn.winner;
@@ -147,6 +145,9 @@ public class BattleshipGameModel {
         }
 
         gameReadiness[1] = 1;
+        if(turnChanged && _onTurnChangedListener != null) {
+            _onTurnChangedListener.OnTurnChanged();
+        }
     }
 
     public void setBoards(PlayerBoardResponse boards) {
@@ -156,7 +157,7 @@ public class BattleshipGameModel {
     }
 
     public void setGameDetail(NetworkGameDetail gameDetail) {
-        if (gameDetail.id.equals(_gameId)) {
+        if (!gameDetail.id.equals(_gameId)) {
             Log.e(TAG, "Game ids do not match! currentGameId=" + _gameId.toString() + ", gameDetailId=" + gameDetail.id.toString());
             return;
         }
@@ -174,6 +175,7 @@ public class BattleshipGameModel {
         }
 
         gameReadiness[3] = 1;
+        isGameReady();
     }
 
     private boolean isGameReady() {
@@ -190,91 +192,15 @@ public class BattleshipGameModel {
         return ready;
     }
 
-//    private boolean IsOccupied(int boardNum, int position) {
-//        return _boards.get(boardNum)[position] == 2; // no ship
-//    }
+    //region Listeners
+    public OnBoardChangeListener _onBoardChangedListener;
+    public OnBoardChangeListener getOnBoardChangeListener() { return _onBoardChangedListener; }
+    public void setOnBoardChangeListener(OnBoardChangeListener _onBoardChangeListener) { this._onBoardChangedListener = _onBoardChangeListener; }
+    public interface OnBoardChangeListener { public void OnBoardChanged(); }
 
-    private void setShip(int boardNum, int orientation, int boatSize, int position) {
-//        for (int i = 0; i < boatSize; i++) {
-//            // since columns are 10 blocks then next row would be i * 10
-//            int offset = orientation == 0 ? i : i * 10;
-//            _boards.get(boardNum)[position + offset] = 2; // ship
-//        }
-    }
-
-//    private void setSuccessfulHit(int position) {
-//        _boards.get(_currentTurn)[position] = 3; // ship missileFired
-//        _totalHits[_currentTurn == 0 ? 1 : 0]++;
-//        checkGameState();
-//    }
-//
-//    private void checkGameState() {
-//        if (_totalHits[_currentTurn == 0 ? 1 : 0] >= _totalShipTargets) {
-//            _currentTurn = _currentTurn == 0 ? 1 : 0; // change player turn since loser is currently selected
-//            _state = GamePlayState.GAME_OVER;
-//        }
-//    }
-
-//    private void setUnsuccessfulHit(int position) {
-//        _boards.get(_currentTurn)[position] = 1; // ship missed
-//    }
-
-    //region OnBoardChangedListener
-
-//    public boolean missileFired(int position) {
-//        Log.i("PLAYER TURN / MISSILE LOC", "firedMissileAt=" + _currentTurn + ",position=" + position);
-//        // make sure player isn't firing in the same location twice
-//        //if(!IsValid(_currentTurn, position)) { return false; }
-//        _missilesFired[_currentTurn]++;
-//        _currentTurn = _currentTurn == 0 ? 1 : 0;
-//        boolean success = false;
-//
-//
-//        if (IsOccupied(_currentTurn, position)) {
-//            setSuccessfulHit(position);
-//            success = true;
-//        } else {
-//            setUnsuccessfulHit(position);
-//        }
-//
-//        triggerObservers();
-//        return success;
-//    }
-
-    public OnBoardChangeListener getOnBoardChangeListener() {
-        return _onBoardChangedListener;
-    }
-
-    public void setOnBoardChangeListener(OnBoardChangeListener _onBoardChangeListener) {
-        this._onBoardChangedListener = _onBoardChangeListener;
-    }
-
-    private void triggerObservers() {
-        if (_onBoardChangedListener != null) {
-            _onBoardChangedListener.OnBoardChanged();
-        }
-    }
+    public OnTurnChangedListener _onTurnChangedListener;
+    public OnTurnChangedListener getOnTurnChangedListener() { return _onTurnChangedListener; }
+    public void setOnTurnChangedListener(OnTurnChangedListener _onTurnChangedListener) { this._onTurnChangedListener = _onTurnChangedListener; }
+    public interface OnTurnChangedListener { public void OnTurnChanged(); }
     //endregion
-
-    public interface OnBoardChangeListener {
-        public void OnBoardChanged();
-    }
-
-    public static class Game {
-        public final UUID id;
-        public final String name;
-        public final String player1;
-        public final String player2;
-        public final String winner;
-        public final int missilesLaunched;
-
-        public Game(UUID id, String name, String player1, String player2, String winner, int missilesLaunched) {
-            this.id = id;
-            this.name = name;
-            this.player1 = player1;
-            this.player2 = player2;
-            this.winner = winner;
-            this.missilesLaunched = missilesLaunched;
-        }
-    }
 }

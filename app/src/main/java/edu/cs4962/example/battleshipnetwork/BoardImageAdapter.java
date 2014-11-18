@@ -50,6 +50,7 @@ public class BoardImageAdapter extends BaseAdapter {
     public void populateBoard() {
         if(BattleshipGameCollection.getInstance().getCurrentGame() == null) { return; }
         List<Cell> board = BattleshipGameCollection.getInstance().getCurrentGame().getBoard(_boardId);
+        if(board == null) { return; }
 
         for(Cell c : board) {
             setCell(c);

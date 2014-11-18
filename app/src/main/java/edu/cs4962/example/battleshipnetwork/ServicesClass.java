@@ -51,6 +51,12 @@ public class ServicesClass {
             this.missilesLaunched = missilesLaunched;
         }
     }
+    public static class PlayerName {
+        public final String playerName;
+        public PlayerName(String playerName) {
+            this.playerName = playerName;
+        }
+    }
     public static class JoinGameResponse {
         public final String playerId;
 
@@ -129,6 +135,13 @@ public class ServicesClass {
         public NewGame(String gameName, String playerName) {
             this.gameName = gameName;
             this.playerName = playerName;
+        }
+    }
+
+    public static class PlayerId {
+        public final String playerId;
+        public PlayerId(String playerId) {
+            this.playerId = playerId;
         }
     }
 

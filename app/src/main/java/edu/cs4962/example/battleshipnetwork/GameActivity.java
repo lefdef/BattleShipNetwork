@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.FragmentTransaction;
 import android.graphics.Color;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.ViewGroup;
@@ -33,12 +34,13 @@ import static edu.cs4962.example.battleshipnetwork.ServicesClass.NetworkGameDeta
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NewGame;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.NewGameResponse;
 import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerBoardResponse;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerName;
+import static edu.cs4962.example.battleshipnetwork.ServicesClass.PlayerId;
 
 /**
  * Created by Brigham on 10/29/2014.
  */
 public class GameActivity extends Activity {
-
     private static final String API_URL = "http://battleship.pixio.com";
     private final String TAG = "GAMEACTIVITY";
     private RestAdapter restAdapter;
@@ -105,7 +107,7 @@ public class GameActivity extends Activity {
 
                     @Override
                     public void failure(RetrofitError retrofitError) {
-
+                        Log.i(TAG, "createNewGame, retrofitError=" + retrofitError.getResponse().toString());
                     }
                 });
             }
@@ -117,60 +119,44 @@ public class GameActivity extends Activity {
                 // TODO: make sure you can even join the current game
 
                 // first check to make sure menu item selected is not already the current game
-                if (BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier().equals(gameId)) {
+                if (BattleshipGameCollection.getInstance().getCurrentGame().getGameId().equals(gameId)) {
                     return;
                 }
 
                 BattleshipGameCollection.getInstance().joinGame(UUID.fromString(gameId));
-                
-                battleshipService.joinGame(gameId.toString(), "testplayer", new Callback<JoinGameResponse>() {
-                            @Override
-                            public void success(JoinGameResponse joinGameResponse, Response response) {
-                                BattleshipGameCollection.getInstance().getCurrentGame().setMyPlayerId(joinGameResponse.playerId);
-                            }
+                PlayerName playerName = new PlayerName("Dave");
 
+                battleshipService.joinGame(gameId.toString(), playerName, new Callback<JoinGameResponse>() {
                     @Override
-                    public void failure(RetrofitError retrofitError) {
+                    public void success(JoinGameResponse joinGameResponse, Response response) {
+                        BattleshipGameCollection.getInstance().getCurrentGame().setMyPlayerId(joinGameResponse.playerId);
+                        Log.i(TAG, "game joined!");
 
-                    }
-                });
+                        if(pollCurrentTurn != null) {
+                            pollCurrentTurn.cancel(true);
+                        }
 
-
-                battleshipService.determineTurn(joinGameResponse.playerId.toString(), new Callback<CurrentTurnResponse>() {
-                    @Override
-                    public void success(CurrentTurnResponse currentTurnResponse, Response response) {
-                        BattleshipGameCollection.getInstance().getCurrentGame().setCurrentTurn(currentTurnResponse);
+                        pollCurrentTurn();
+                        refreshBoard();
                     }
 
                     @Override
                     public void failure(RetrofitError retrofitError) {
-
+                        Log.i(TAG, "joinGame, retrofitError=" + retrofitError.getResponse().toString());
                     }
                 });
 
-                battleshipService.requestBoard(joinGameResponse.playerId.toString(), new Callback<PlayerBoardResponse>() {
-                    @Override
-                    public void success(PlayerBoardResponse playerBoardResponse, Response response) {
-                        BattleshipGameCollection.getInstance().getCurrentGame().setBoards(playerBoardResponse);
-                    }
-
-                    @Override
-                    public void failure(RetrofitError retrofitError) {
-
-                    }
-                });
-
-
-                    battleshipService.gameDetail(BattleshipGameCollection.getInstance().getCurrentGame().getIdentifier().toString(), new Callback<NetworkGameDetail>() {
+                battleshipService.gameDetail(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId(), new Callback<NetworkGameDetail>() {
                     @Override
                     public void success(NetworkGameDetail networkGameDetail, Response response) {
                         BattleshipGameCollection.getInstance().getCurrentGame().setGameDetail(networkGameDetail);
+                        Log.i(TAG, "game detail received!");
 
                     }
 
                     @Override
                     public void failure(RetrofitError retrofitError) {
-
+                        Log.e(TAG, "gameDetail, retrofitError=" + retrofitError.getResponse());
                     }
                 });
 
@@ -193,7 +179,7 @@ public class GameActivity extends Activity {
 
                             @Override
                             public void failure(RetrofitError retrofitError) {
-
+                                Log.i(TAG, String.format("guess, retrofitResponse=%1$s, body=%2$s, kind=%3$s", retrofitError.getResponse(), retrofitError.getBody(), retrofitError.getKind()));
                             }
                         });
 
@@ -203,19 +189,71 @@ public class GameActivity extends Activity {
         BattleshipGameCollection.getInstance().setOnGameSetChangedListener(new BattleshipGameCollection.OnGameSetChangedListener() {
             @Override
             public void onGameSetChanged() {
-                //_gamePlayFragment.refreshPlayersGrids();
                 _gameMenuFragment.refreshGameMenu();
             }
         });
     }
 
-    private void refreshGamesList() { //final BattleshipService service, final int start, final int num) {
-        new AsyncTask<Void, Void, Void>() {
+    private void refreshBoard() {
+        BattleshipGameCollection.getInstance().getCurrentGame().setOnTurnChangedListener(new BattleshipGameModel.OnTurnChangedListener() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
+            public void OnTurnChanged() {
+                _gamePlayFragment.refreshPlayersGrids();
+            }
+        });
+
+        PlayerId playerId = new PlayerId(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId());
+        battleshipService.requestBoard(BattleshipGameCollection.getInstance().getCurrentGame().getGameId(), playerId, new Callback<PlayerBoardResponse>() {
+            @Override
+            public void success(PlayerBoardResponse playerBoardResponse, Response response) {
+                BattleshipGameCollection.getInstance().getCurrentGame().setBoards(playerBoardResponse);
+                Log.i(TAG, "board received!");
             }
 
+            @Override
+            public void failure(RetrofitError retrofitError) {
+                Log.e(TAG, "requestBoard, retrofitError=" + retrofitError.getResponse());
+            }
+        });
+    }
+    private AsyncTask pollCurrentTurn;
+    private void pollCurrentTurn() {
+       pollCurrentTurn = new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                while (!isCancelled()) {
+                    PlayerId playerId = new PlayerId(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId());
+                    battleshipService.determineTurn(BattleshipGameCollection.getInstance().getCurrentGame().getGameId(),
+                            playerId,
+                            new Callback<CurrentTurnResponse>() {
+                        @Override
+                        public void success(CurrentTurnResponse currentTurnResponse, Response response) {
+                            BattleshipGameCollection.getInstance().getCurrentGame().setCurrentTurn(currentTurnResponse);
+                        }
+
+                        @Override
+                        public void failure(RetrofitError retrofitError) {
+                            Log.i(TAG, "pollCurrentTurn, retrofitError=" + retrofitError.getResponse());
+                        }
+                    });
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                return null;
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
+            pollCurrentTurn.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, (Void[])null);
+        else
+            pollCurrentTurn.execute((Void[])null);
+    }
+
+
+    private void pollGameList() { //final BattleshipService service, final int start, final int num) {
+        new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
                 while(!isCancelled()) {
@@ -227,25 +265,18 @@ public class GameActivity extends Activity {
 
                         @Override
                         public void failure(RetrofitError retrofitError) {
-                            Log.i(TAG, "error=" + retrofitError.getKind().toString());
+                            Log.i(TAG, "pollGameList, retrofitError=" + retrofitError.getResponse());
                         }
                     });
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(10000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
                 return null;
             }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                super.onPostExecute(aVoid);
-            }
-
-
-        };
+        }.execute();
     }
 
     @Override
@@ -261,7 +292,7 @@ public class GameActivity extends Activity {
         if (battleshipService == null) {
             battleshipService = restAdapter.create(BattleshipService.class);
         }
-            refreshGamesList();
+            pollGameList();
     }
 
     @Override
@@ -284,18 +315,18 @@ public class GameActivity extends Activity {
         void gameDetail(@Path("id") String id, Callback<NetworkGameDetail> gameDetailCallback);
 
         @POST("/api/games/{id}/join")
-        void joinGame(@Path("id") String id, @Body String playerName, Callback<JoinGameResponse> gameResponseCallback);
+        void joinGame(@Path("id") String id, @Body PlayerName playerName, Callback<JoinGameResponse> gameResponseCallback);
 
         @POST("/api/games")
         void createNewGame(@Body NewGame newGame, Callback<NewGameResponse> newGameResponseCallback);
 
         @POST("/api/games/{id}/guess")
-        void guess(@Path("id") String playerId, @Body Guess guess, Callback<GuessResponse> guessResponseCallback);
+        void guess(@Path("id") String id, @Body Guess guess, Callback<GuessResponse> guessResponseCallback);
 
         @POST("/api/games/{id}/status")
-        void determineTurn(@Path("id") String playerId, Callback<CurrentTurnResponse> currentTurnResponseCallback);
+        void determineTurn(@Path("id") String id, @Body PlayerId playerId, Callback<CurrentTurnResponse> currentTurnResponseCallback);
 
         @POST("/api/games/{id}/board")
-        void requestBoard(@Path("id") String playerId, Callback<PlayerBoardResponse> playerBoardResponseCallback);
+        void requestBoard(@Path("id") String id, @Body PlayerId playerId, Callback<PlayerBoardResponse> playerBoardResponseCallback);
     }
 }
