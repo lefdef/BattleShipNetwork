@@ -46,7 +46,7 @@ public class GamePlayFragment extends Fragment {
             }
         });
         // update the adapter
-        _my_label.setText("Player 1 board");
+        _my_label.setText("Your board");
         _opponent_label.setText("Opponent board");
 
         // re-initialize the board with any new data

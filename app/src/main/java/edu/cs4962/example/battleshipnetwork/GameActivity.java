@@ -95,7 +95,7 @@ public class GameActivity extends Activity {
         _gameMenuFragment.setOnNewGameSelectedListener(new GameMenuFragment.OnNewGameSelectedListener() {
             @Override
             public void OnNewGameSelected() {
-                NewGame newGame = new NewGame("TheCakeIsALie", "Dave");
+                NewGame newGame = new NewGame("TheCakeIsALie", "Dave1");
                 battleshipService.createNewGame(newGame, new Callback<NewGameResponse>() {
                     @Override
                     public void success(NewGameResponse newGameResponse, Response response) {
@@ -124,9 +124,9 @@ public class GameActivity extends Activity {
                 }
 
                 BattleshipGameCollection.getInstance().joinGame(UUID.fromString(gameId));
-                PlayerName playerName = new PlayerName("Dave");
+                PlayerName playerName = new PlayerName("Dave2");
 
-                battleshipService.joinGame(gameId.toString(), playerName, new Callback<JoinGameResponse>() {
+                battleshipService.joinGame(gameId.toString(), "Dave2", new Callback<JoinGameResponse>() {
                     @Override
                     public void success(JoinGameResponse joinGameResponse, Response response) {
                         BattleshipGameCollection.getInstance().getCurrentGame().setMyPlayerId(joinGameResponse.playerId);
@@ -146,7 +146,7 @@ public class GameActivity extends Activity {
                     }
                 });
 
-                battleshipService.gameDetail(BattleshipGameCollection.getInstance().getCurrentGame().getPlayerId(), new Callback<NetworkGameDetail>() {
+                battleshipService.gameDetail(BattleshipGameCollection.getInstance().getCurrentGame().getGameId(), new Callback<NetworkGameDetail>() {
                     @Override
                     public void success(NetworkGameDetail networkGameDetail, Response response) {
                         BattleshipGameCollection.getInstance().getCurrentGame().setGameDetail(networkGameDetail);
@@ -315,7 +315,7 @@ public class GameActivity extends Activity {
         void gameDetail(@Path("id") String id, Callback<NetworkGameDetail> gameDetailCallback);
 
         @POST("/api/games/{id}/join")
-        void joinGame(@Path("id") String id, @Body PlayerName playerName, Callback<JoinGameResponse> gameResponseCallback);
+        void joinGame(@Path("id") String id, @Body String playerName, Callback<JoinGameResponse> gameResponseCallback);
 
         @POST("/api/games")
         void createNewGame(@Body NewGame newGame, Callback<NewGameResponse> newGameResponseCallback);
